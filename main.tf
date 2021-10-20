@@ -247,16 +247,10 @@ resource "azurerm_lb_probe" "main" {
  port                = 1521
 }
 
-resource "azurerm_lb_backend_address_pool_address" "main0" {
-  name = "backaddr0"
+resource "azurerm_lb_backend_address_pool_address" "main" {
+  name = "backaddr${count.index}"
   backend_address_pool_id = azurerm_lb_backend_address_pool.main.id
   virtual_network_id = azurerm_virtual_network.main.id
-  ip_address = azurerm_linux_virtual_machine.main[0].private_ip_address
-}
-
-resource "azurerm_lb_backend_address_pool_address" "main1" {
-  name = "backaddr1"
-  backend_address_pool_id = azurerm_lb_backend_address_pool.main.id
-  virtual_network_id = azurerm_virtual_network.main.id
-  ip_address = azurerm_linux_virtual_machine.main[1].private_ip_address
+  ip_address = azurerm_linux_virtual_machine.main[count.index].private_ip_address
+  count               = var.count_vm
 }
