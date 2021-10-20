@@ -94,8 +94,8 @@ resource "azurerm_public_ip" "main" {
   name                = "pip-${var.prefix}-${count.index}"
   location            = azurerm_resource_group.main.location
   resource_group_name = azurerm_resource_group.main.name
-  allocation_method   = "Dynamic"
-  sku                 = "Basic"
+  allocation_method   = "Static"
+  sku                 = "Standard"
   count               = var.count_vm
 }
 
@@ -130,7 +130,7 @@ resource "azurerm_linux_virtual_machine" "main" {
   ]
   count                           = var.count_vm
   admin_username                  = "azureuser"
-  admin_password                  = "Himitsu999!"
+  admin_password                  = "${var.ospassword}"
   disable_password_authentication = false
 
   source_image_reference {
@@ -205,6 +205,58 @@ resource "azurerm_virtual_machine_extension" "main" {
   netappip  = azurerm_netapp_volume.main.mount_ip_addresses.0
   node      = count.index
   myip      = azurerm_linux_virtual_machine.main[count.index].private_ip_address
+  ospassword = "${var.ospassword}"
 }))}"}
     SETTINGS
+}
+
+resource "azurerm_lb" "main" {
+  name                = "lb-${var.prefix}"
+  resource_group_name = azurerm_resource_group.main.name
+  location            = azurerm_resource_group.main.location
+  sku                 = "Standard"
+
+  frontend_ip_configuration {
+    name              = "lb-privateip-${var.prefix}"
+    subnet_id         = azurerm_subnet.vm.id
+    private_ip_address_allocation = "Dynamic"
+  }
+}
+
+resource "azurerm_lb_rule" "main" {
+  resource_group_name            = azurerm_resource_group.main.name
+  loadbalancer_id                = azurerm_lb.main.id
+  name                           = "LBRuleOrcl"
+  protocol                       = "Tcp"
+  frontend_port                  = 1521
+  backend_port                   = 1521
+  frontend_ip_configuration_name = "lb-privateip-${var.prefix}"
+  probe_id                       = azurerm_lb_probe.main.id
+  backend_address_pool_id        = azurerm_lb_backend_address_pool.main.id
+}
+
+resource "azurerm_lb_backend_address_pool" "main" {
+ loadbalancer_id     = azurerm_lb.main.id
+ name                = "lb-backend-${var.prefix}"
+}
+
+resource "azurerm_lb_probe" "main" {
+ resource_group_name = azurerm_resource_group.main.name
+ loadbalancer_id     = azurerm_lb.main.id
+ name                = "orcl-running-probe"
+ port                = 1521
+}
+
+resource "azurerm_lb_backend_address_pool_address" "main0" {
+  name = "backaddr0"
+  backend_address_pool_id = azurerm_lb_backend_address_pool.main.id
+  virtual_network_id = azurerm_virtual_network.main.id
+  ip_address = azurerm_linux_virtual_machine.main[0].private_ip_address
+}
+
+resource "azurerm_lb_backend_address_pool_address" "main1" {
+  name = "backaddr1"
+  backend_address_pool_id = azurerm_lb_backend_address_pool.main.id
+  virtual_network_id = azurerm_virtual_network.main.id
+  ip_address = azurerm_linux_virtual_machine.main[1].private_ip_address
 }

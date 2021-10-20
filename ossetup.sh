@@ -40,8 +40,8 @@ firewall-cmd --permanent --add-service=high-availability
 firewall-cmd --add-service=high-availability
 
 (
-echo Himitsu999!
-echo Himitsu999!
+echo ${ospassword}
+echo ${ospassword}
 ) | passwd hacluster
 
 systemctl start pcsd.service
@@ -50,7 +50,7 @@ systemctl enable pcsd.service
 if [ ${node} -eq 0 ]; then
     (
     echo hacluster
-    echo Himitsu999!
+    echo ${ospassword}
     ) | pcs cluster auth ${vmname0} ${vmname1}
 
     pcs cluster setup --start --name my_cluster ${vmname0} ${vmname1}
@@ -60,4 +60,11 @@ if [ ${node} -eq 0 ]; then
 
     pcs property set concurrent-fencing=false
     pcs property set stonith-enabled=false
+    pcs property set no-quorum-policy=ignore
+
+    pcs resource defaults resource-stickiness=INFINITY migration-threshold=10
+    pcs resource create OraLsnr ocf:heartbeat:oralsnr sid="orcl" home="/u01/app/oracle/product/19.0.0/dbhome_1" user="oracle" op start interval="0s" timeout="120s" op stop interval="0s" timeout="120s" op monitor interval="30s" timeout="60s" on-fail="restart"
+    pcs resource create OraSrv ocf:heartbeat:oracle sid=orcl home="/u01/app/oracle/product/19.0.0/dbhome_1" user=oracle op start interval="0s" timeout="120" on-fail="restart" op stop interval="0s" timeout="120" on-fail="block" op monitor interval="30s" timeout="60s" on-fail="restart"
+    pcs constraint colocation add OraSrv with OraLsnr score=INFINITY
+    pcs constraint order set OraLsnr OraSrv
 fi
