@@ -3,5 +3,5 @@ variable "prefix" {
 }
 
 variable "ospassword" {
-  description = "Linux OS password: Used by azueruser and hacluster users."
+  description = "Linux OS password: Used by azureuser and hacluster users."
 }
